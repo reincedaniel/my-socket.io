@@ -1,16 +1,21 @@
 {
-  "name": "base",
+  "name": "my-broker-socket-io",
   "version": "1.0.0",
   "main": "index.js",
   "scripts": {
     "start": "node index.js",
     "dev": "node index.js",
+    "build": "node -e \"const fs=require('fs'); const path=require('path'); if(!fs.existsSync('public'))fs.mkdirSync('public'); if(fs.existsSync('functions'))fs.cpSync('functions', 'public/functions', {recursive:true}); if(fs.existsSync('index.html'))fs.copyFileSync('index.html', 'public/index.html'); console.log('Build completed!');\"",
+    "build:win": "if not exist public mkdir public && if exist functions xcopy /E /I functions public\\functions && if exist index.html copy index.html public\\index.html",
     "test": "echo \"Error: no test specified\" && exit 1"
   },
   "author": "",
   "license": "ISC",
-  "description": "",
+  "description": "WebSocket broker adaptado para Netlify",
   "dependencies": {
     "socket.io": "^4.8.1"
+  },
+  "devDependencies": {
+    "@netlify/functions": "^2.0.0"
   }
 }
