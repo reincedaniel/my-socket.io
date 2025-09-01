@@ -1,0 +1,22 @@
+# Dockerfile para desenvolvimento
+FROM node:18-alpine
+
+# Instalar dependências necessárias para desenvolvimento
+RUN apk add --no-cache git
+
+WORKDIR /app
+
+# Copiar package.json e package-lock.json
+COPY package*.json ./
+
+# Instalar todas as dependências (incluindo devDependencies)
+RUN npm install
+
+# Copiar código da aplicação
+COPY . .
+
+# Expor porta 3000
+EXPOSE 3000
+
+# Comando para desenvolvimento (será sobrescrito pelo docker-compose)
+CMD ["npm", "run", "dev"]

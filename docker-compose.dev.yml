@@ -1,0 +1,24 @@
+version: '3.8'
+
+services:
+  websocket-server:
+    build: 
+      context: .
+      dockerfile: Dockerfile.dev
+    container_name: websocket-server-dev
+    restart: unless-stopped
+    ports:
+      - "3000:3000"
+    environment:
+      - NODE_ENV=development
+      - PORT=3000
+    volumes:
+      - .:/app
+      - /app/node_modules
+    networks:
+      - websocket-network
+    command: npm run dev
+
+networks:
+  websocket-network:
+    driver: bridge

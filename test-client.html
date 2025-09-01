@@ -1,0 +1,248 @@
+<!DOCTYPE html>
+<html lang="pt">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Cliente WebSocket - Teste</title>
+    <script src="https://cdn.socket.io/4.8.1/socket.io.min.js"></script>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            max-width: 800px;
+            margin: 0 auto;
+            padding: 20px;
+            background: #f5f5f5;
+        }
+        .container {
+            background: white;
+            padding: 30px;
+            border-radius: 10px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+        }
+        .status {
+            padding: 15px;
+            margin: 15px 0;
+            border-radius: 5px;
+            text-align: center;
+        }
+        .connected { background: #d4edda; color: #155724; border: 1px solid #c3e6cb; }
+        .disconnected { background: #f8d7da; color: #721c24; border: 1px solid #f5c6cb; }
+        .form-group {
+            margin: 15px 0;
+        }
+        label {
+            display: block;
+            margin-bottom: 5px;
+            font-weight: bold;
+        }
+        input, button {
+            padding: 10px;
+            border: 1px solid #ddd;
+            border-radius: 5px;
+            font-size: 16px;
+        }
+        input {
+            width: 100%;
+            box-sizing: border-box;
+        }
+        button {
+            background: #007bff;
+            color: white;
+            border: none;
+            cursor: pointer;
+            margin-right: 10px;
+        }
+        button:hover {
+            background: #0056b3;
+        }
+        button:disabled {
+            background: #6c757d;
+            cursor: not-allowed;
+        }
+        .log {
+            background: #f8f9fa;
+            border: 1px solid #dee2e6;
+            border-radius: 5px;
+            padding: 15px;
+            margin-top: 20px;
+            max-height: 300px;
+            overflow-y: auto;
+        }
+        .log-entry {
+            margin: 5px 0;
+            padding: 5px;
+            border-radius: 3px;
+        }
+        .log-info { background: #d1ecf1; }
+        .log-success { background: #d4edda; }
+        .log-error { background: #f8d7da; }
+        .log-warning { background: #fff3cd; }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🔌 Cliente WebSocket - Teste</h1>
+        
+        <div id="connectionStatus" class="status disconnected">
+            <strong>Desconectado</strong>
+        </div>
+        
+        <div class="form-group">
+            <label for="serverUrl">URL do Servidor:</label>
+            <input type="text" id="serverUrl" value="http://localhost:3000" placeholder="http://localhost:3000">
+        </div>
+        
+        <div class="form-group">
+            <button onclick="connect()" id="connectBtn">Conectar</button>
+            <button onclick="disconnect()" id="disconnectBtn" disabled>Desconectar</button>
+        </div>
+        
+        <hr>
+        
+        <div class="form-group">
+            <label for="userId">ID do Utilizador:</label>
+            <input type="text" id="userId" value="user123" placeholder="user123">
+        </div>
+        
+        <div class="form-group">
+            <button onclick="joinRoom()" id="joinBtn" disabled>Entrar na Sala</button>
+        </div>
+        
+        <div class="form-group">
+            <label for="action">Ação:</label>
+            <input type="text" id="action" value="Teste de ação" placeholder="Teste de ação">
+        </div>
+        
+        <div class="form-group">
+            <button onclick="sendAction()" id="sendBtn" disabled>Enviar Ação</button>
+        </div>
+        
+        <div class="log">
+            <h3>📋 Log de Eventos:</h3>
+            <div id="logContent"></div>
+        </div>
+    </div>
+
+    <script>
+        let socket = null;
+        let currentUserId = null;
+        
+        function log(message, type = 'info') {
+            const logContent = document.getElementById('logContent');
+            const timestamp = new Date().toLocaleTimeString();
+            const entry = document.createElement('div');
+            entry.className = `log-entry log-${type}`;
+            entry.innerHTML = `<strong>[${timestamp}]</strong> ${message}`;
+            logContent.appendChild(entry);
+            logContent.scrollTop = logContent.scrollHeight;
+        }
+        
+        function updateConnectionStatus(connected) {
+            const status = document.getElementById('connectionStatus');
+            const connectBtn = document.getElementById('connectBtn');
+            const disconnectBtn = document.getElementById('disconnectBtn');
+            const joinBtn = document.getElementById('joinBtn');
+            const sendBtn = document.getElementById('sendBtn');
+            
+            if (connected) {
+                status.className = 'status connected';
+                status.innerHTML = '<strong>✅ Conectado</strong>';
+                connectBtn.disabled = true;
+                disconnectBtn.disabled = false;
+                joinBtn.disabled = false;
+                sendBtn.disabled = false;
+            } else {
+                status.className = 'status disconnected';
+                status.innerHTML = '<strong>❌ Desconectado</strong>';
+                connectBtn.disabled = false;
+                disconnectBtn.disabled = true;
+                joinBtn.disabled = true;
+                sendBtn.disabled = true;
+            }
+        }
+        
+        function connect() {
+            const serverUrl = document.getElementById('serverUrl').value;
+            
+            try {
+                socket = io(serverUrl);
+                
+                socket.on('connect', () => {
+                    log('Conectado ao servidor', 'success');
+                    updateConnectionStatus(true);
+                });
+                
+                socket.on('disconnect', () => {
+                    log('Desconectado do servidor', 'warning');
+                    updateConnectionStatus(false);
+                    currentUserId = null;
+                });
+                
+                socket.on('userAction', (action) => {
+                    log(`📨 Ação recebida: ${JSON.stringify(action)}`, 'success');
+                });
+                
+                socket.on('connect_error', (error) => {
+                    log(`Erro de conexão: ${error.message}`, 'error');
+                    updateConnectionStatus(false);
+                });
+                
+            } catch (error) {
+                log(`Erro ao conectar: ${error.message}`, 'error');
+            }
+        }
+        
+        function disconnect() {
+            if (socket) {
+                socket.disconnect();
+                socket = null;
+                currentUserId = null;
+                log('Desconectado manualmente', 'info');
+            }
+        }
+        
+        function joinRoom() {
+            if (!socket) {
+                log('Não está conectado ao servidor', 'error');
+                return;
+            }
+            
+            const userId = document.getElementById('userId').value;
+            if (!userId) {
+                log('Por favor, insira um ID de utilizador', 'error');
+                return;
+            }
+            
+            socket.emit('joinRoom', userId);
+            currentUserId = userId;
+            log(`Entrou na sala: ${userId}`, 'success');
+        }
+        
+        function sendAction() {
+            if (!socket) {
+                log('Não está conectado ao servidor', 'error');
+                return;
+            }
+            
+            if (!currentUserId) {
+                log('Por favor, entre numa sala primeiro', 'error');
+                return;
+            }
+            
+            const action = document.getElementById('action').value;
+            if (!action) {
+                log('Por favor, insira uma ação', 'error');
+                return;
+            }
+            
+            socket.emit('userAction', { userId: currentUserId, action });
+            log(`📤 Ação enviada: ${action}`, 'info');
+        }
+        
+        // Auto-conectar ao carregar a página
+        window.onload = function() {
+            log('Página carregada. Clique em "Conectar" para iniciar.', 'info');
+        };
+    </script>
+</body>
+</html>
